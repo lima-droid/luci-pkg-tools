@@ -73,7 +73,47 @@ ipk 的 `postinst` / apk 的 `.post-install`。
 3. 用 ucode/Lua 重写那部分功能（LuCI 25.x 模板是解释执行的，天然跨架构）；
 4. `qemu-user-static` + `binfmt_misc` 兜底（慢，且吃内核支持，不推荐）。
 
-## 4. 在真机上验证
+## 4. 让主题出现在「系统 → 语言和界面 → 设计」下拉
+
+这是第三方主题最常见的缺口：包只管装文件，**没人往 `/etc/config/luci` 里写主题条目**，
+所以 LuCI 的下拉里只有 Argon / Bootstrap。
+
+LuCI 25 的前端代码（`/www/luci-static/resources/view/system/system.js`）就是遍历
+`config internal 'themes'` 的每个 option —— key 当显示名，value 当 mediaurlbase：
+
+```js
+const th = Object.keys(uci.get('luci','themes') || {}).sort();
+for (let t of th) if (t.charAt(0) != '.') o.value(uci.get('luci','themes',t), t);
+```
+
+所以补一条即可，[extras/luci-theme-register.sh](extras/luci-theme-register.sh) 封装了这件事：
+
+```sh
+# 扫描 /usr/share/ucode/luci/template/themes/* 补齐所有未注册主题（幂等）
+sh extras/luci-theme-register.sh
+# 或者只注册一个 + 自定义显示名
+sh extras/luci-theme-register.sh ctmodem "CTModem ONT"
+```
+
+实测输出：
+
+```
+已注册：Argon -> /luci-static/argon
+已注册：Bootstrap -> /luci-static/bootstrap
+注册：Ctmodem -> /luci-static/ctmodem
+已 uci commit luci（刷新页面即可在「设计」里选到）
+```
+
+想升级后自动补：
+
+```sh
+cp extras/luci-theme-register.sh /etc/uci-defaults/99-luci-theme-register
+chmod +x /etc/uci-defaults/99-luci-theme-register
+```
+
+（脚本会检查 `header.ut` 是否存在 —— 没有 `header.ut` 的主题即使注册了，LuCI 也渲染不出来。）
+
+## 5. 在真机上验证
 
 ```bash
 pip install paramiko
@@ -86,7 +126,7 @@ python tools/e2e_router.py --pkg out/主题.apk \
 它会：探测目标机架构与包管理器 → 上传 → 安装 → 校验文件 → 清 LuCI 缓存 → 卸载 → 校验无残留，
 最后打印 `PASS` / `FAIL`。本轮就是用它 + 手工 `uci set luci.main.mediaurlbase` 完成验证的。
 
-## 5. 真正会挡住「多固件」的两件事
+## 6. 真正会挡住「多固件」的两件事
 
 **包格式**：给 24.10 及更老的 opkg 固件，v3 包永远装不上，得转 ipk（§3B）。
 反过来也一样，25.x 装不了 ipk。
@@ -95,12 +135,12 @@ python tools/e2e_router.py --pkg out/主题.apk \
 24.10 及更老是 Lua 视图（`/usr/lib/lua/luci/view/themes/<t>/`）。
 只带 `.ut` 的主题在老固件上「装得上但白屏」—— 这个不是架构问题，也不是改 arch 能救的。
 
-## 6. 依赖别照抄
+## 7. 依赖别照抄
 
 闭源包常见 `Depends: luci-app-xxx, kmod-xxx`，换固件后包名不存在，装主题直接失败，报错还像架构问题。
 主题留 `luci-base` 就够（老固件可能要 `luci-compat`）；`kmod-*` 一律删。
 
-## 7. 装完必做
+## 8. 装完必做
 
 ```sh
 rm -rf /tmp/luci-indexcache* /tmp/luci-modulecache/*
@@ -109,15 +149,16 @@ uci commit luci
 /etc/init.d/uhttpd restart
 ```
 
-## 8. 仓库内容
+## 9. 仓库内容
 
 ```
 tools/luci_pkg.py       inspect / repack / extract / build（ipk + apk v2；v3 识别并给指引）
 tools/e2e_router.py     真机装/卸/校验（paramiko）
 tools/make_fixtures.py  造测试包
 tools/verify.py         回归：改 arch、datahash、拒 .so、解包重组
+extras/luci-theme-register.sh  把已装主题补进「系统 → 设计」下拉
 docs/case-ctmodem.md    本次实测：adbdump 摘录、安装日志、渲染校验
-.github/workflows/ci.yml  Python 3.9 / 3.12 跑回归
+.github/workflows/ci.yml  Python 3.10 / 3.12 跑回归
 ```
 
 本地跑：
@@ -126,7 +167,7 @@ docs/case-ctmodem.md    本次实测：adbdump 摘录、安装日志、渲染校
 python tools/make_fixtures.py && python tools/verify.py   # 应输出 ALL OK
 ```
 
-## 9. 限制
+## 10. 限制
 
 - 不重签：改过的 apk 只能 `--allow-untrusted` 装；要干净签名请用 `abuild-sign`。
 - v3 只做识别，解包交给 `apk extract`（重写一个 v3 writer 成本高、且必须跟着 apk-tools 版本走）。

@@ -88,8 +88,41 @@ GET /cgi-bin/luci/  ->  200, 3956 bytes
 | 那你真正会踩的坑是什么？ | ① 24.10 及更老的 **opkg 固件**装不了 v3 包；② 老 **Lua LuCI** 没有 ucode 模板，装上也是白屏 |
 | 想在老固件上用怎么办？ | `apk --allow-untrusted extract` 解包 → `build --format ipk` 转 ipk；模板要另写 Lua 版 |
 
-## 6. 复现命令
+## 6. 让它在「系统 → 语言和界面 → 设计」里可选
 
+装完只解决了“能用”，没解决“能选”：主题包没往 `/etc/config/luci` 写
+`config internal 'themes'` 条目，所以下拉里只有 Argon / Bootstrap。
+
+前端逻辑（`resources/view/system/system.js`）：
+
+```js
+const th = Object.keys(uci.get('luci','themes') || {}).sort();
+for (let t of th) if (t.charAt(0) != '.') o.value(uci.get('luci','themes',t), t);
+```
+
+补一条即可：
+
+```sh
+uci set luci.themes.Ctmodem='/luci-static/ctmodem'
+uci commit luci
+```
+
+实测 ubus 数据（就是前端拿到的）：
+
+```json
+"themes": {
+  "Argon": "/luci-static/argon",
+  "Bootstrap": "/luci-static/bootstrap",
+  "BootstrapDark": "/luci-static/bootstrap-dark",
+  "BootstrapLight": "/luci-static/bootstrap-light",
+  "Ctmodem": "/luci-static/ctmodem"
+}
+```
+
+用 `extras/luci-theme-register.sh` 可以幂等地批量补，并且自带 `header.ut` 存在性检查。
+装成 `/etc/uci-defaults/99-luci-theme-register` 后，固件升级也会自动补回来。
+
+## 7. 复现命令
 ```bash
 # 看元数据
 apk adbdump luci-theme-ctmodem-*.apk
