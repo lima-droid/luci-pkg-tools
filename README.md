@@ -170,6 +170,7 @@ tools/make_fixtures.py  造测试包
 tools/verify.py         回归：改 arch、datahash、拒 .so、解包重组
 extras/luci-theme-register.sh  把已装主题补进「系统 → 设计」下拉
 docs/case-ctmodem.md    本次实测：adbdump 摘录、安装日志、渲染校验
+dist/                   归档：ctmodem 原包（apk v3）+ 转好的 all 架构 ipk
 .github/workflows/ci.yml  Python 3.10 / 3.12 跑回归
 ```
 

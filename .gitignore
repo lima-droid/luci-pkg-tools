@@ -4,6 +4,9 @@ examples/
 samples/
 tree-test/
 out/
+build/
 *.ipk
 *.apk
 .pw
+!dist/*.apk
+!dist/*.ipk
