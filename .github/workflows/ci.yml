@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: 生成测试包
+        run: python tools/make_fixtures.py
+      - name: 回归（改 arch / datahash / 拒绝带 so 的包 / 解包重组）
+        run: python tools/verify.py
+      - name: CLI 冒烟
+        run: |
+          python tools/luci_pkg.py inspect examples/luci-theme-ctmodem-26.293_aarch64.apk
+          python tools/luci_pkg.py repack examples/luci-theme-ctmodem-26.293_aarch64.apk -o /tmp/x.apk
+          python tools/luci_pkg.py inspect /tmp/x.apk
