@@ -92,16 +92,28 @@ for (let t of th) if (t.charAt(0) != '.') o.value(uci.get('luci','themes',t), t)
 # 扫描 /usr/share/ucode/luci/template/themes/* 补齐所有未注册主题（幂等）
 sh extras/luci-theme-register.sh
 # 或者只注册一个 + 自定义显示名
-sh extras/luci-theme-register.sh ctmodem "CTModem ONT"
+sh extras/luci-theme-register.sh ctmodem "Telecom"
+# 已经注册过、只想改显示名（会把旧条目迁过去）
+sh extras/luci-theme-register.sh ctmodem "Telecom"
 ```
+
+> 下拉里的名字就是 option 的 key，所以显示名直接写成 `Telecom` 即可。
+> 对同一个目录第二次传不同的名字，脚本会做**改名**而不是堆出两条。
 
 实测输出：
 
 ```
 已注册：Argon -> /luci-static/argon
 已注册：Bootstrap -> /luci-static/bootstrap
-注册：Ctmodem -> /luci-static/ctmodem
+注册：Telecom -> /luci-static/ctmodem
 已 uci commit luci（刷新页面即可在「设计」里选到）
+```
+
+注意：如果改名的正好是**当前正在用**的主题，`luci.main.mediaurlbase` 有可能被别的东西重置回默认主题，
+改完顺手确认一下：
+
+```sh
+uci get luci.main.mediaurlbase        # 应该是 /luci-static/ctmodem
 ```
 
 想升级后自动补：

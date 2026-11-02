@@ -23,8 +23,10 @@ ucfirst() {
 
 register() {
 	name=$1
-	label=${2:-$(ucfirst "$name")}
+	want=${2:-}
+	label=${want:-$(ucfirst "$name")}
 	base="/luci-static/$name"
+	found=
 
 	[ -d "$THEMES/$name" ] || { echo "跳过 $name：没有模板目录 $THEMES/$name"; return; }
 	[ -f "$THEMES/$name/header.ut" ] || { echo "跳过 $name：缺 header.ut，LuCI 渲染不了"; return; }
@@ -33,14 +35,27 @@ register() {
 	for key in $(uci -q show luci.themes 2>/dev/null | sed -n 's/^luci\.themes\.\([^.=]*\)=.*/\1/p'); do
 		val=$(uci -q get "luci.themes.$key")
 		if [ "$val" = "$base" ]; then
-			echo "已注册：$key -> $base"
-			return
+			found=$key
+			continue
 		fi
 		if [ "$key" = "$label" ]; then
 			echo "冲突：$label 已被 $val 占用，改用 $name"
 			label=$name
 		fi
 	done
+
+	# 同一个 mediaurlbase 已经有条目
+	if [ -n "$found" ]; then
+		if [ -n "$want" ] && [ "$found" != "$want" ] && [ "$label" = "$want" ]; then
+			uci -q delete "luci.themes.$found"
+			uci set "luci.themes.$want=$base"
+			echo "改名：$found -> $want"
+			CHANGED=1
+		else
+			echo "已注册：$found -> $base"
+		fi
+		return
+	fi
 
 	uci set "luci.themes.$label=$base"
 	echo "注册：$label -> $base"

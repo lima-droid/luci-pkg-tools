@@ -100,10 +100,10 @@ const th = Object.keys(uci.get('luci','themes') || {}).sort();
 for (let t of th) if (t.charAt(0) != '.') o.value(uci.get('luci','themes',t), t);
 ```
 
-补一条即可：
+补一条即可（下拉里显示的名字就是 key，这里起名 `Telecom`）：
 
 ```sh
-uci set luci.themes.Ctmodem='/luci-static/ctmodem'
+uci set luci.themes.Telecom='/luci-static/ctmodem'
 uci commit luci
 ```
 
@@ -115,7 +115,7 @@ uci commit luci
   "Bootstrap": "/luci-static/bootstrap",
   "BootstrapDark": "/luci-static/bootstrap-dark",
   "BootstrapLight": "/luci-static/bootstrap-light",
-  "Ctmodem": "/luci-static/ctmodem"
+  "Telecom": "/luci-static/ctmodem"
 }
 ```
 
